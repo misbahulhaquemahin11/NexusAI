@@ -26,7 +26,7 @@ window.APP_CONFIG = {
 
   // ── 🆓 User দের জন্য Free Models ─────────────────────────────
   FREE_MODELS: [
-    { id: 'arcee-ai/trinity-large-preview:free',     label: 'Trinity Large',      badge: 'New ✨'  },
+    { id: 'arcee-ai/trinity-large-preview:free',     label: 'nexusai',      badge: 'New ✨'  },
     
   ],
 
