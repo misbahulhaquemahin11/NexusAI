@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>NexusAI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="config.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans:['DM Sans','sans-serif'], mono:['JetBrains Mono','monospace'] },
+          colors: {
+            brand: { 50:'#f0f4ff',100:'#e0eaff',200:'#c7d7fe',300:'#a5b9fc',400:'#8193f8',500:'#6470f1',600:'#4f52e5',700:'#4040cc',800:'#3535a5',900:'#2f3182' }
+          },
+          keyframes: {
+            'fade-up':  {'0%':{opacity:'0',transform:'translateY(10px)'},'100%':{opacity:'1',transform:'translateY(0)'}},
+            'dot-beat': {'0%,80%,100%':{transform:'scale(.6)',opacity:'.4'},'40%':{transform:'scale(1)',opacity:'1'}},
+          },
+          animation: {
+            'fade-up': 'fade-up .3s ease-out forwards',
+            'dot-beat':'dot-beat 1.4s ease-in-out infinite',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    *{box-sizing:border-box;}
+    body{font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;overscroll-behavior:none;}
+    ::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:99px;}
+    .dark ::-webkit-scrollbar-thumb{background:#374151;}
+    #sidebar{transition:transform .25s cubic-bezier(.4,0,.2,1);}
+    @media(max-width:767px){
+      #sidebar{position:fixed;top:0;left:0;height:100%;z-index:50;transform:translateX(-100%);}
+      #sidebar.open{transform:translateX(0);box-shadow:4px 0 32px rgba(0,0,0,.22);}
+    }
+    .prose-msg h1,.prose-msg h2,.prose-msg h3{font-weight:600;margin:.6em 0 .3em;line-height:1.3;}
+    .prose-msg h1{font-size:1.18rem;}.prose-msg h2{font-size:1.04rem;}.prose-msg h3{font-size:.95rem;}
+    .prose-msg p{margin:.45em 0;line-height:1.72;}
+    .prose-msg ul,.prose-msg ol{padding-left:1.4em;margin:.4em 0;}
+    .prose-msg li{margin:.22em 0;line-height:1.65;}
+    .prose-msg blockquote{border-left:3px solid #6470f1;padding-left:.9em;color:#6b7280;margin:.6em 0;font-style:italic;}
+    .dark .prose-msg blockquote{color:#9ca3af;}
+    .prose-msg a{color:#6470f1;text-decoration:underline;}
+    .prose-msg strong{font-weight:600;}
+    .prose-msg table{border-collapse:collapse;width:100%;margin:.6em 0;font-size:.9rem;}
+    .prose-msg th,.prose-msg td{border:1px solid #e5e7eb;padding:.35em .65em;text-align:left;}
+    .dark .prose-msg th,.dark .prose-msg td{border-color:#374151;}
+    .prose-msg th{background:#f3f4f6;font-weight:600;}.dark .prose-msg th{background:#1f2937;}
+    .code-wrap{border-radius:10px;overflow:hidden;margin:.5em 0;}
+    .code-hdr{display:flex;align-items:center;justify-content:space-between;padding:.4em .8em;background:#1e293b;font-size:.73rem;color:#94a3b8;font-family:'JetBrains Mono',monospace;}
+    .prose-msg pre{background:#0f172a;color:#e2e8f0;padding:.9em;overflow-x:auto;font-size:.82rem;line-height:1.6;font-family:'JetBrains Mono',monospace;margin:0;}
+    .prose-msg code:not(pre code){background:#f1f5f9;color:#6470f1;padding:.12em .38em;border-radius:4px;font-size:.86em;font-family:'JetBrains Mono',monospace;}
+    .dark .prose-msg code:not(pre code){background:#1e293b;color:#a5b4fc;}
+    .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#6470f1;animation:dot-beat 1.4s ease-in-out infinite;}
+    .dot:nth-child(2){animation-delay:.2s;}.dot:nth-child(3){animation-delay:.4s;}
+    .chat-item:hover .chat-act{opacity:1;}.chat-act{opacity:0;transition:opacity .15s;}
+    #userInput{resize:none;min-height:24px;max-height:180px;overflow-y:auto;}
+    .model-card{transition:all .18s;border:2px solid transparent;cursor:pointer;}
+    .model-card:hover{border-color:#8193f8;background:#f0f4ff;}
+    .dark .model-card:hover{background:#1e1b4b;}
+    .model-card.sel{border-color:#6470f1!important;background:#e0eaff!important;}
+    .dark .model-card.sel{background:#1e1b4b!important;}
+  </style>
+</head>
+<body class="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex" style="min-height:100dvh;min-height:100vh;">
+
+<!-- Loading -->
+<div id="loading" class="fixed inset-0 z-[999] flex flex-col items-center justify-center bg-white dark:bg-gray-950 gap-4">
+  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center shadow-xl">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  </div>
+  <div class="flex gap-1.5"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+  <p class="text-xs text-gray-400 tracking-widest uppercase font-medium">Loading…</p>
+</div>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside id="sidebar" class="w-64 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col md:relative md:translate-x-0" style="min-height:100dvh;min-height:100vh;">
+  <div class="flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-gray-800">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <span id="sAppName" class="font-semibold text-sm tracking-tight">NexusAI</span>
+    </div>
+    <button id="btnCloseSide" class="md:hidden p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-400">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="p-3">
+    <button id="btnNewChat" class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-[.98] text-white text-sm font-medium transition-all shadow-sm">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> New Chat
+    </button>
+  </div>
+  <div id="chatList" class="flex-1 overflow-y-auto px-2 pb-2"></div>
+  <div class="border-t border-gray-200 dark:border-gray-800 p-3 space-y-1">
+    <button id="btnDark" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 text-sm text-gray-600 dark:text-gray-400 transition-colors">
+      <svg id="darkIco" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <span id="darkLbl">Dark Mode</span>
+    </button>
+    <a href="admin.html" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 text-sm text-gray-400 dark:text-gray-600 transition-colors">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Admin Panel
+    </a>
+  </div>
+</aside>
+<div id="overlay" class="fixed inset-0 z-40 bg-black/40 hidden md:hidden"></div>
+
+<!-- ═══ MAIN ═══ -->
+<main class="flex-1 flex flex-col" style="min-height:100dvh;min-height:100vh;min-width:0;">
+  <header class="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-950/90 backdrop-blur sticky top-0 z-30">
+    <button id="btnOpenSide" class="md:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <h1 id="chatTitle" class="flex-1 font-semibold text-sm truncate text-gray-800 dark:text-gray-200">New Conversation</h1>
+    <button id="btnModelPick" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-brand-50 dark:bg-brand-900/30 border border-brand-200 dark:border-brand-800 hover:bg-brand-100 transition-colors">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6470f1" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <span id="modelBadge" class="text-xs font-medium text-brand-700 dark:text-brand-300 font-mono max-w-[130px] truncate"></span>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6470f1" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <!-- Proxy status dot -->
+    <div id="proxyDot" title="Proxy status" class="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-700 flex-shrink-0"></div>
+  </header>
+
+  <div id="msgBox" class="flex-1 overflow-y-auto px-4 py-6">
+    <div id="welcome" class="flex flex-col items-center justify-center min-h-full pb-10 animate-fade-up">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center shadow-xl mb-5">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <h2 id="wTitle" class="text-2xl font-semibold mb-2">How can I help?</h2>
+      <p id="wSub" class="text-gray-500 dark:text-gray-400 text-sm mb-8 text-center max-w-xs">Powered by free AI models. No account needed.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
+        <button onclick="fillP('Summarize machine learning in 5 key bullet points')" class="text-left px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all text-sm bg-white dark:bg-gray-900 shadow-sm">
+          <div class="font-medium mb-0.5">🧠 Explain ML</div><div class="text-xs text-gray-400">Simple breakdown</div>
+        </button>
+        <button onclick="fillP('Write a Python function to fetch JSON from a URL')" class="text-left px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all text-sm bg-white dark:bg-gray-900 shadow-sm">
+          <div class="font-medium mb-0.5">🐍 Python code</div><div class="text-xs text-gray-400">Fetch & parse JSON</div>
+        </button>
+        <button onclick="fillP('Draft a professional LinkedIn bio for a full-stack developer')" class="text-left px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all text-sm bg-white dark:bg-gray-900 shadow-sm">
+          <div class="font-medium mb-0.5">✍️ Write a bio</div><div class="text-xs text-gray-400">LinkedIn-ready</div>
+        </button>
+        <button onclick="fillP('Give me 5 creative side project ideas for a developer')" class="text-left px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all text-sm bg-white dark:bg-gray-900 shadow-sm">
+          <div class="font-medium mb-0.5">💡 Project ideas</div><div class="text-xs text-gray-400">Creative dev projects</div>
+        </button>
+      </div>
+    </div>
+    <div id="msgList"></div>
+  </div>
+
+  <!-- Input bar -->
+  <div class="sticky bottom-0 z-20 bg-white/95 dark:bg-gray-950/95 backdrop-blur border-t border-gray-200 dark:border-gray-800 px-4 py-3" style="padding-bottom:max(12px,env(safe-area-inset-bottom));">
+    <div class="max-w-3xl mx-auto">
+      <div class="flex items-end gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-2.5 focus-within:border-brand-400 dark:focus-within:border-brand-600 transition-colors shadow-sm">
+        <textarea id="userInput" rows="1" placeholder="Message NexusAI…" class="flex-1 bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 py-1 leading-relaxed focus:outline-none"></textarea>
+        <button id="sendBtn" class="flex-shrink-0 w-9 h-9 rounded-xl bg-brand-600 hover:bg-brand-700 flex items-center justify-center transition-colors shadow-sm mb-0.5">
+          <svg id="sendIco" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+          <svg id="stopIco" class="hidden" width="13" height="13" viewBox="0 0 24 24" fill="white"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+        </button>
+      </div>
+      <p class="text-center text-xs text-gray-400 dark:text-gray-600 mt-2">AI can make mistakes. Verify important information.</p>
+    </div>
+  </div>
+</main>
+
+<!-- Model Modal -->
+<div id="modelModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+  <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-fade-up">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+      <div>
+        <h2 class="font-semibold">Choose a Model</h2>
+        <p class="text-xs text-gray-400 mt-0.5">All models are free · No API key needed</p>
+      </div>
+      <button onclick="closeModal('modelModal')" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="modelListEl" class="p-4 space-y-2 max-h-[60vh] overflow-y-auto"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[200] opacity-0 transition-opacity pointer-events-none">
+  <div id="toastMsg" class="px-4 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium shadow-lg whitespace-nowrap"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ── Config ───────────────────────────────────────── */
+var CFG         = window.APP_CONFIG || {};
+var PROXY_URL   = (CFG.PROXY_URL   || '').trim();
+var FREE_MODELS = Array.isArray(CFG.FREE_MODELS) && CFG.FREE_MODELS.length ? CFG.FREE_MODELS : [{id:'deepseek/deepseek-r1:free',label:'DeepSeek R1',badge:'Free'}];
+var APP_NAME    = CFG.APP_NAME    || 'NexusAI';
+var APP_TAG     = CFG.APP_TAGLINE || 'Your intelligent AI assistant';
+var DEF_SYS     = CFG.DEFAULT_SYSTEM_PROMPT || '';
+var DEF_MODEL   = CFG.DEFAULT_MODEL || FREE_MODELS[0].id;
+
+/* ── Storage ──────────────────────────────────────── */
+var LS      = window.localStorage;
+var K_MODEL = 'nx_u_model';
+var K_DARK  = 'nx_dark';
+var K_CHATS = 'nx_u_chats';
+
+/* ── State ────────────────────────────────────────── */
+var S = { chats:[], curId:null, abort:null };
+
+/* ── DOM ──────────────────────────────────────────── */
+var $       = function(id){return document.getElementById(id);};
+var msgBox  = $('msgBox');
+var msgList = $('msgList');
+var welcome = $('welcome');
+var inp     = $('userInput');
+var sendBtn = $('sendBtn');
+var sendIco = $('sendIco');
+var stopIco = $('stopIco');
+
+/* ── Init ─────────────────────────────────────────── */
+function init(){
+  document.title = APP_NAME;
+  var sn=$('sAppName'); if(sn)sn.textContent=APP_NAME;
+  var wt=$('wTitle');   if(wt)wt.textContent='How can I help?';
+  var ws=$('wSub');     if(ws)ws.textContent=APP_TAG;
+
+  applyDark();
+  loadChats();
+  renderChatList();
+  if(S.chats.length) switchChat(S.chats[0].id); else showWelcome();
+  refreshBadge();
+  buildModelList();
+  checkProxy(); // proxy blink test
+
+  inp.addEventListener('input', autoGrow);
+  inp.addEventListener('keydown', onKey);
+  sendBtn.addEventListener('click', onSendStop);
+  $('btnNewChat').addEventListener('click', newChat);
+  $('btnOpenSide').addEventListener('click', openSide);
+  $('btnCloseSide').addEventListener('click', closeSide);
+  $('btnDark').addEventListener('click', toggleDark);
+  $('btnModelPick').addEventListener('click', function(){ openModal('modelModal'); });
+  $('overlay').addEventListener('click', closeSide);
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape'){closeModal('modelModal');closeSide();} });
+
+  // hide splash
+  var ldr=$('loading'); if(ldr){ldr.style.opacity='0';ldr.style.transition='opacity .4s';setTimeout(function(){ldr.style.display='none';},420);}
+}
+
+/* ── Proxy check ──────────────────────────────────── */
+function checkProxy(){
+  var dot=$('proxyDot'); if(!dot)return;
+  if(!PROXY_URL||PROXY_URL.includes('তোমার-নাম')){
+    dot.className='w-2 h-2 rounded-full bg-red-400 flex-shrink-0';
+    dot.title='Proxy URL not set in config.js';
+  } else {
+    dot.className='w-2 h-2 rounded-full bg-green-400 flex-shrink-0';
+    dot.title='Proxy configured ✓';
+  }
+}
+
+/* ── Dark ─────────────────────────────────────────── */
+function applyDark(){ var d=LS.getItem(K_DARK)==='true'; document.documentElement.classList.toggle('dark',d); updateDarkIcon(d); }
+function toggleDark(){ var d=!document.documentElement.classList.contains('dark'); LS.setItem(K_DARK,d); document.documentElement.classList.toggle('dark',d); updateDarkIcon(d); }
+function updateDarkIcon(d){ var i=$('darkIco'),l=$('darkLbl'); if(d){i.innerHTML='<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 3v1M12 20v1M3 12h1M20 12h1M5.64 5.64l.7.7M17.66 17.66l.7.7M5.64 18.36l.7-.7M17.66 6.34l.7-.7"/>';if(l)l.textContent='Light Mode';}else{i.innerHTML='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';if(l)l.textContent='Dark Mode';} }
+
+/* ── Model ────────────────────────────────────────── */
+function getModel(){ var m=LS.getItem(K_MODEL); return FREE_MODELS.find(function(x){return x.id===m;})?m:DEF_MODEL; }
+function setModel(id){ if(!FREE_MODELS.find(function(x){return x.id===id;}))return; LS.setItem(K_MODEL,id); refreshBadge(); buildModelList(); closeModal('modelModal'); showToast('Model switched ✓'); }
+function refreshBadge(){ var m=getModel(); var f=FREE_MODELS.find(function(x){return x.id===m;}); var b=$('modelBadge'); if(b)b.textContent=f?f.label:m.split('/').pop(); var btn=$('btnModelPick'); if(btn)btn.classList.remove('hidden'); }
+function buildModelList(){
+  var el=$('modelListEl'); if(!el)return;
+  var cur=getModel(); el.innerHTML='';
+  FREE_MODELS.forEach(function(m){
+    var sel=m.id===cur;
+    var card=document.createElement('button');
+    card.className='model-card w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-left'+(sel?' sel':'');
+    card.innerHTML='<div class="flex-1 min-w-0"><div class="font-medium text-sm text-gray-900 dark:text-gray-100">'+esc(m.label)+'</div><div class="text-xs text-gray-400 font-mono mt-0.5 truncate">'+esc(m.id)+'</div></div><span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 font-medium flex-shrink-0">'+esc(m.badge||'Free')+'</span>'+(sel?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6470f1" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>':'');
+    card.addEventListener('click',function(){setModel(m.id);});
+    el.appendChild(card);
+  });
+}
+
+/* ── Chats ────────────────────────────────────────── */
+function loadChats(){ try{var r=LS.getItem(K_CHATS);S.chats=r?JSON.parse(r):[];if(!Array.isArray(S.chats))S.chats=[];}catch(e){S.chats=[];} }
+function saveChats(){ try{LS.setItem(K_CHATS,JSON.stringify(S.chats));}catch(e){} }
+function findChat(id){ for(var i=0;i<S.chats.length;i++) if(S.chats[i].id===id) return S.chats[i]; return null; }
+function curChat(){ return findChat(S.curId); }
+function newChat(){ var c={id:'c'+Date.now(),title:'New Chat',messages:[],createdAt:Date.now()}; S.chats.unshift(c); saveChats(); switchChat(c.id); renderChatList(); closeSide(); }
+function switchChat(id){ var c=findChat(id); if(!c)return; S.curId=id; $('chatTitle').textContent=c.title; renderMsgs(c); renderChatList(); }
+function deleteChat(id,e){ if(e)e.stopPropagation(); S.chats=S.chats.filter(function(c){return c.id!==id;}); saveChats(); if(S.curId===id){S.curId=null;if(S.chats.length)switchChat(S.chats[0].id);else{showWelcome();$('chatTitle').textContent='New Conversation';}} renderChatList(); }
+
+/* ── Chat list render ─────────────────────────────── */
+function renderChatList(){
+  var cl=$('chatList'); if(!cl)return; cl.innerHTML='';
+  if(!S.chats.length){cl.innerHTML='<p class="text-xs text-gray-400 text-center px-3 py-4">No chats yet</p>';return;}
+  S.chats.forEach(function(c){
+    var a=c.id===S.curId;
+    var d=document.createElement('div');
+    d.className='chat-item flex items-center gap-1 px-2 py-2 rounded-xl cursor-pointer mb-0.5 '+(a?'bg-brand-100 dark:bg-brand-900/40':'hover:bg-gray-200 dark:hover:bg-gray-800');
+    var ico=document.createElement('span'); ico.textContent='💬'; ico.className='flex-shrink-0 text-sm';
+    var lbl=document.createElement('span'); lbl.className='flex-1 text-xs font-medium truncate '+(a?'text-brand-800 dark:text-brand-200':'text-gray-700 dark:text-gray-300'); lbl.textContent=c.title;
+    var acts=document.createElement('div'); acts.className='chat-act flex';
+    var del=document.createElement('button'); del.className='p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 transition-colors'; del.title='Delete';
+    del.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>';
+    del.addEventListener('click',function(e){deleteChat(c.id,e);});
+    acts.appendChild(del); d.appendChild(ico); d.appendChild(lbl); d.appendChild(acts);
+    d.addEventListener('click',function(){switchChat(c.id);closeSide();});
+    cl.appendChild(d);
+  });
+}
+
+/* ── Messages render ──────────────────────────────── */
+function renderMsgs(c){ if(!c||!c.messages||!c.messages.length){showWelcome();return;} hideWelcome(); msgList.innerHTML=''; c.messages.forEach(function(m){appendMsg(m.role,m.content,false);}); scrollBot(); }
+function showWelcome(){welcome.style.display='flex';msgList.innerHTML='';}
+function hideWelcome(){welcome.style.display='none';}
+
+function appendMsg(role,content,anim){
+  var wrap=document.createElement('div');
+  wrap.className='flex mb-5 '+(role==='user'?'justify-end':'justify-start');
+  if(anim)wrap.classList.add('animate-fade-up');
+  if(role==='user'){
+    var b=document.createElement('div'); b.className='max-w-[80%] px-4 py-3 rounded-2xl rounded-tr-sm bg-brand-600 text-white text-sm leading-relaxed whitespace-pre-wrap break-words'; b.textContent=content; wrap.appendChild(b);
+  } else {
+    var av=document.createElement('div'); av.className='w-7 h-7 rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center flex-shrink-0 mt-0.5 shadow';
+    av.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>';
+    var col=document.createElement('div'); col.className='flex flex-col gap-1.5 max-w-[85%]';
+    var prose=document.createElement('div'); prose.className='prose-msg text-sm text-gray-800 dark:text-gray-200 leading-relaxed ml-3';
+    if(content)prose.innerHTML=renderMd(content);
+    var row=document.createElement('div'); row.className='flex ml-3 mt-0.5';
+    var cp=document.createElement('button'); cp.className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors';
+    cp.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy';
+    cp.addEventListener('click',function(){copyTxt(content);cp.textContent='✓ Copied';setTimeout(function(){cp.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy';},2000);});
+    row.appendChild(cp); col.appendChild(prose); col.appendChild(row); wrap.appendChild(av); wrap.appendChild(col);
+    wrap._prose=prose;
+  }
+  msgList.appendChild(wrap); scrollBot(); return wrap;
+}
+
+function addTyping(){ var w=document.createElement('div'); w.className='flex mb-5 justify-start animate-fade-up'; w.id='typing'; var av=document.createElement('div'); av.className='w-7 h-7 rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center flex-shrink-0 shadow'; av.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>'; var b=document.createElement('div'); b.className='ml-3 px-4 py-3 rounded-2xl bg-gray-100 dark:bg-gray-800 flex gap-1.5'; b.innerHTML='<span class="dot"></span><span class="dot"></span><span class="dot"></span>'; w.appendChild(av); w.appendChild(b); msgList.appendChild(w); scrollBot(); }
+function rmTyping(){ var e=$('typing'); if(e)e.remove(); }
+
+/* ── Markdown ─────────────────────────────────────── */
+function renderMd(txt){
+  if(typeof marked==='undefined')return esc(txt).replace(/\n/g,'<br>');
+  try{
+    var r=new marked.Renderer();
+    r.code=function(code,lang){ var l=lang||'text'; var t=typeof code==='object'?code.text:code; return '<div class="code-wrap"><div class="code-hdr"><span>'+esc(l)+'</span><button onclick="cpCode(this)" style="padding:.2em .6em;border-radius:4px;background:#334155;color:#94a3b8;font-size:.72rem;cursor:pointer;">Copy</button></div><pre><code>'+esc(t)+'</code></pre></div>'; };
+    marked.setOptions({breaks:true,gfm:true,renderer:r}); return marked.parse(txt||'');
+  }catch(e){return esc(txt).replace(/\n/g,'<br>');}
+}
+
+/* ── Send ─────────────────────────────────────────── */
+function onSendStop(){ S.abort?stopGen():sendMsg(); }
+function sendMsg(){
+  var txt=(inp.value||'').trim(); if(!txt)return;
+  if(!PROXY_URL||PROXY_URL.includes('তোমার-নাম')){ showToast('⚠️ config.js-এ PROXY_URL সেট করো'); return; }
+  if(!S.curId)newChat();
+  var c=curChat(); if(!c)return;
+  c.messages.push({role:'user',content:txt});
+  if(c.messages.length===1||c.title==='New Chat'){c.title=txt.slice(0,42)+(txt.length>42?'…':'');$('chatTitle').textContent=c.title;renderChatList();}
+  saveChats(); hideWelcome(); appendMsg('user',txt,true);
+  inp.value=''; inp.style.height='auto'; setSending(true); addTyping();
+  var model=getModel();
+  var msgs=[]; if(DEF_SYS)msgs.push({role:'system',content:DEF_SYS});
+  c.messages.forEach(function(m){msgs.push({role:m.role,content:m.content});});
+  doStream(model,msgs,c);
+}
+function stopGen(){ if(S.abort){S.abort.abort();S.abort=null;} setSending(false); rmTyping(); }
+function setSending(on){ if(on){sendIco.classList.add('hidden');stopIco.classList.remove('hidden');sendBtn.classList.add('bg-red-500');sendBtn.classList.remove('bg-brand-600','hover:bg-brand-700');}else{sendIco.classList.remove('hidden');stopIco.classList.add('hidden');sendBtn.classList.remove('bg-red-500');sendBtn.classList.add('bg-brand-600','hover:bg-brand-700');} }
+
+function doStream(model,msgs,chat){
+  S.abort=new AbortController();
+  /* ✅ PROXY_URL ব্যবহার করছি — API key নেই */
+  fetch(PROXY_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:model,messages:msgs,stream:true}),
+    signal:S.abort.signal
+  })
+  .then(function(resp){ if(!resp.ok)return resp.text().then(function(t){throw new Error('Error '+resp.status+': '+t.slice(0,200));}); rmTyping(); var aiWrap=appendMsg('assistant','',true); var prose=aiWrap&&aiWrap._prose; var full='',reader=resp.body.getReader(),dec=new TextDecoder(),buf=''; function pump(){return reader.read().then(function(res){if(res.done){doneStream(chat,full,prose);return;} buf+=dec.decode(res.value,{stream:true}); var lines=buf.split('\n');buf=lines.pop(); lines.forEach(function(line){line=line.trim();if(!line||line==='data: [DONE]')return;if(line.startsWith('data: ')){try{var d=JSON.parse(line.slice(6));var tok=d.choices&&d.choices[0]&&d.choices[0].delta&&d.choices[0].delta.content;if(typeof tok==='string'){full+=tok;if(prose)prose.innerHTML=renderMd(full);scrollBot();}}catch(e){}}}); return pump();}); } return pump(); })
+  .catch(function(err){ rmTyping(); if(err&&err.name==='AbortError')return; errMsg(err.message||'Request failed'); })
+  .finally(function(){ S.abort=null; setSending(false); });
+}
+function doneStream(chat,full,prose){ if(!full)full='(No response)'; chat.messages.push({role:'assistant',content:full}); saveChats(); if(prose)prose.innerHTML=renderMd(full); }
+function errMsg(msg){ var w=document.createElement('div'); w.className='flex mb-4 justify-start animate-fade-up'; w.innerHTML='<div class="max-w-[85%] px-4 py-3 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-sm"><b>Error:</b> '+esc(msg)+'</div>'; msgList.appendChild(w); scrollBot(); }
+
+/* ── Helpers ──────────────────────────────────────── */
+function autoGrow(){ inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,180)+'px'; }
+function onKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();} }
+function scrollBot(){ msgBox.scrollTop=msgBox.scrollHeight; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function copyTxt(t){ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).catch(function(){});}else{var a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0;';document.body.appendChild(a);a.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(a);} }
+function openSide(){ $('sidebar').classList.add('open'); $('overlay').classList.remove('hidden'); }
+function closeSide(){ $('sidebar').classList.remove('open'); $('overlay').classList.add('hidden'); }
+function openModal(id){ var e=$(id); if(e){e.classList.remove('hidden');e.classList.add('flex');} }
+function closeModal(id){ var e=$(id); if(e){e.classList.add('hidden');e.classList.remove('flex');} }
+var _tt; function showToast(m){ var t=$('toast'),msg=$('toastMsg'); if(!t||!msg)return; msg.textContent=m; t.style.opacity='1'; clearTimeout(_tt); _tt=setTimeout(function(){t.style.opacity='0';},2600); }
+
+window.fillP=function(t){inp.value=t;inp.focus();autoGrow();};
+window.closeModal=closeModal;
+window.cpCode=function(btn){ var p=btn.closest('.code-wrap')&&btn.closest('.code-wrap').querySelector('pre'); if(!p)return; copyTxt(p.innerText||p.textContent); btn.textContent='Copied!'; setTimeout(function(){btn.textContent='Copy';},2000); };
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+</script>
+</body>
+</html>
