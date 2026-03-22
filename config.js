@@ -27,14 +27,7 @@ window.APP_CONFIG = {
   // ── 🆓 User দের জন্য Free Models ─────────────────────────────
   FREE_MODELS: [
     { id: 'arcee-ai/trinity-large-preview:free',     label: 'Trinity Large',      badge: 'New ✨'  },
-    { id: 'deepseek/deepseek-r1:free',               label: 'DeepSeek R1',        badge: 'Free'    },
-    { id: 'meta-llama/llama-3.2-3b-instruct:free',   label: 'Llama 3.2 · 3B',    badge: 'Free'    },
-    { id: 'meta-llama/llama-3.1-8b-instruct:free',   label: 'Llama 3.1 · 8B',    badge: 'Free'    },
-    { id: 'google/gemma-3-12b-it:free',              label: 'Gemma 3 · 12B',      badge: 'Free'    },
-    { id: 'mistralai/mistral-7b-instruct:free',      label: 'Mistral 7B',         badge: 'Free'    },
-    { id: 'qwen/qwen-2.5-72b-instruct:free',         label: 'Qwen 2.5 · 72B',    badge: 'Free'    },
-    { id: 'microsoft/phi-3-mini-128k-instruct:free', label: 'Phi-3 Mini',         badge: 'Free'    },
-    { id: 'openchat/openchat-7b:free',               label: 'OpenChat 7B',        badge: 'Free'    },
+    
   ],
 
   // ── 👑 Admin দের জন্য সব Models ──────────────────────────────
